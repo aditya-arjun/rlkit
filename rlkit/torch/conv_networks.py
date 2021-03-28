@@ -94,9 +94,12 @@ class CNN(nn.Module):
     def forward(self, input):
         fc_input = (self.added_fc_input_size != 0)
 
-        conv_input = input.narrow(start=0,
-                                  length=self.conv_input_length,
-                                  dim=1).contiguous()
+        # conv_input = input.narrow(start=0,
+        #                          length=self.conv_input_length,
+        #                          dim=1).contiguous()
+
+        conv_input = input
+
         if fc_input:
             extra_fc_input = input.narrow(start=self.conv_input_length,
                                           length=self.added_fc_input_size,
@@ -110,7 +113,7 @@ class CNN(nn.Module):
         h = self.apply_forward(h, self.conv_layers, self.conv_norm_layers,
                                use_batch_norm=self.batch_norm_conv)
         # flatten channels for fc layers
-        h = h.view(h.size(0), -1)
+        h = h.reshape(h.size(0), -1)
         if fc_input:
             h = torch.cat((h, extra_fc_input), dim=1)
         h = self.apply_forward(h, self.fc_layers, self.fc_norm_layers,
