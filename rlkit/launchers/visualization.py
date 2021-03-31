@@ -360,7 +360,9 @@ def dump_video_lite(
                 (path_length, H + 2 * pad_length, W + 2 * pad_length,
                  num_channels)
             ))
-            f1.append(np.concatenate(f2, axis=1))
+        f1.append(np.concatenate(f2, axis=1))
+
+    print(f1)
     outputdata = np.concatenate(f1, axis=2)
     filename = osp.join(
         logdir,
