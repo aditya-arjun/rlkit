@@ -215,15 +215,14 @@ def dump_skillmap(
 
 
 def get_image(img, imsize=84, pad_length=1, pad_color=255):
-    if len(obs.shape) == 1:
-        obs = obs.reshape(-1, imsize, imsize).transpose()
-        img = obs
+    if len(img.shape) == 1:
+        img = img.reshape(-1, imsize, imsize).transpose()
 
-    print(imsize)
     # img = np.uint8(255 * img)
 
     if pad_length > 0:
         img = add_border(img, pad_length, pad_color, imsize=imsize)
+
     return img
 
 
