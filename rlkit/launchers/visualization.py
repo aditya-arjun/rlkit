@@ -361,10 +361,10 @@ def dump_video_lite(
                  num_channels)
             ))
             f1.append(np.concatenate(f2, axis=1))
-            outputdata = np.concatenate(f1, axis=2)
-            filename = osp.join(
-                logdir,
-                'video_{mode}_{epoch}.mp4'.format(mode=mode, epoch=epoch)
-            )
-            skvideo.io.vwrite(filename, outputdata)
-            print("Saved video to ", filename)
+    outputdata = np.concatenate(f1, axis=2)
+    filename = osp.join(
+        logdir,
+        'video_{mode}_{epoch}.mp4'.format(mode=mode, epoch=epoch)
+    )
+    skvideo.io.vwrite(filename, outputdata)
+    print("Saved video to ", filename)
