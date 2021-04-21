@@ -198,6 +198,8 @@ class SACTrainer(TorchTrainer):
             if self.use_automatic_entropy_tuning:
                 self.eval_statistics['Alpha'] = alpha.item()
                 self.eval_statistics['Alpha Loss'] = alpha_loss.item()
+
+            self.eval_statistics['Gradient Steps'] = self._n_train_steps_total
         self._n_train_steps_total += 1
 
     def get_diagnostics(self):

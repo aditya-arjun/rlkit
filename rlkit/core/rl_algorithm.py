@@ -7,16 +7,24 @@ from rlkit.core import logger, eval_util
 from rlkit.data_management.replay_buffer import ReplayBuffer
 from rlkit.samplers.data_collector import DataCollector
 
-
+prv_total_training_time = 0
 def _get_epoch_timings():
     times_itrs = gt.get_times().stamps.itrs
     times = OrderedDict()
     epoch_time = 0
+    total_training_time = 0
     for key in sorted(times_itrs):
         time = times_itrs[key][-1]
         epoch_time += time
+        if key == 'training' or key == 'exploration sampling':
+            total_training_time += time
+
         times['time/{} (s)'.format(key)] = time
+
     times['time/epoch (s)'] = epoch_time
+    global prv_total_training_time
+    times['time/total training time (s)'] = prv_total_training_time + total_training_time
+    prv_total_training_time += total_training_time
     times['time/total (s)'] = gt.get_times().total
     return times
 
