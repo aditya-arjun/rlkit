@@ -9,16 +9,14 @@ import rlkit.torch.pytorch_util as ptu
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.torch.torch_rl_algorithm import TorchTrainer
 
-
+# Adjusted RLKit to accept Critic with qf1/qf2 data members
 class SACTrainer(TorchTrainer):
     def __init__(
             self,
             env,
             policy,
-            qf1,
-            qf2,
-            target_qf1,
-            target_qf2,
+            qf,
+            target_qf,
 
             discount=0.99,
             reward_scale=1.0,
@@ -38,10 +36,8 @@ class SACTrainer(TorchTrainer):
         super().__init__()
         self.env = env
         self.policy = policy
-        self.qf1 = qf1
-        self.qf2 = qf2
-        self.target_qf1 = target_qf1
-        self.target_qf2 = target_qf2
+        self.qf = qf
+        self.target_qf = target_qf
         self.soft_target_tau = soft_target_tau
         self.target_update_period = target_update_period
 
@@ -67,12 +63,8 @@ class SACTrainer(TorchTrainer):
             self.policy.parameters(),
             lr=policy_lr,
         )
-        self.qf1_optimizer = optimizer_class(
-            self.qf1.parameters(),
-            lr=qf_lr,
-        )
-        self.qf2_optimizer = optimizer_class(
-            self.qf2.parameters(),
+        self.qf_optimizer = optimizer_class(
+            self.qf.parameters(),
             lr=qf_lr,
         )
 
@@ -105,29 +97,33 @@ class SACTrainer(TorchTrainer):
             alpha_loss = 0
             alpha = 1
 
+        qf1_pred, qf2_pred = self.qf(obs, actions)
         q_new_actions = torch.min(
-            self.qf1(obs, new_obs_actions),
-            self.qf2(obs, new_obs_actions),
+            qf1_pred,
+            qf2_pred,
         )
         policy_loss = (alpha*log_pi - q_new_actions).mean()
 
         """
         QF Loss
         """
-        q1_pred = self.qf1(obs, actions)
-        q2_pred = self.qf2(obs, actions)
+        q1_pred, q2_pred = self.qf(obs, actions)
         # Make sure policy accounts for squashing functions like tanh correctly!
         new_next_actions, _, _, new_log_pi, *_ = self.policy(
             next_obs, reparameterize=True, return_log_prob=True,
         )
+
+        target_q1, target_q2 = self.target_qf(next_obs, new_next_actions)
         target_q_values = torch.min(
-            self.target_qf1(next_obs, new_next_actions),
-            self.target_qf2(next_obs, new_next_actions),
+            target_q1,
+            target_q2,
         ) - alpha * new_log_pi
 
         q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values
         qf1_loss = self.qf_criterion(q1_pred, q_target.detach())
         qf2_loss = self.qf_criterion(q2_pred, q_target.detach())
+
+        qf_loss = qf1_loss + qf2_loss
 
         """
         Update networks
@@ -135,24 +131,17 @@ class SACTrainer(TorchTrainer):
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
         self.policy_optimizer.step()
-        
-        self.qf1_optimizer.zero_grad()
-        qf1_loss.backward()
-        self.qf1_optimizer.step()
 
-        self.qf2_optimizer.zero_grad()
-        qf2_loss.backward()
-        self.qf2_optimizer.step()
+        self.qf_optimizer.zero_grad()
+        qf_loss.backward()
+        self.qf_optimizer.step()
 
         """
         Soft Updates
         """
         if self._n_train_steps_total % self.target_update_period == 0:
             ptu.soft_update_from_to(
-                self.qf1, self.target_qf1, self.soft_target_tau
-            )
-            ptu.soft_update_from_to(
-                self.qf2, self.target_qf2, self.soft_target_tau
+                self.qf, self.target_qf, self.soft_target_tau
             )
 
         """
@@ -210,18 +199,14 @@ class SACTrainer(TorchTrainer):
     def networks(self):
         return [
             self.policy,
-            self.qf1,
-            self.qf2,
-            self.target_qf1,
-            self.target_qf2,
+            self.qf,
+            self.target_qf,
         ]
 
     def get_snapshot(self):
         return dict(
             policy=self.policy,
-            qf1=self.qf1,
-            qf2=self.qf2,
-            target_qf1=self.qf1,
-            target_qf2=self.qf2,
+            qf=self.qf,
+            target_qf=self.target_qf,
         )
 
